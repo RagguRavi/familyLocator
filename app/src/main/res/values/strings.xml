@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Family Locator</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="enterPhoneNumber">Enter phone number here</string>
+    <string name="addNumber">Add</string>
+    <string name="lorem_ipsum">
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
+        volutpat, dolor id interdum ullamcorper, risus dolor egestas lectus, sit amet mattis purus
+
+    </string>
+
+    <string name="delete">Delete</string>
+    <string name="title_activity_my_test">MyTestActivity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+</resources>
