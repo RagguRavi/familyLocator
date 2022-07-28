@@ -1,37 +1,53 @@
 package com.family.locator.Services;
 
+import android.content.Intent;
+import android.os.Bundle;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import com.family.locator.BO.FCMTokenBO;
+import com.family.locator.DBHelper;
+import com.family.locator.utitlity.Constants;
+import com.family.locator.utitlity.FireBaseDBHelper;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MyFirebaseMsgService";
 
+    static CollectionReference db = null;
+    static {
+        FirebaseFirestore database = FirebaseFirestore.getInstance();
+        db = database.collection("log");
+    }
+
     // [START receive_message]
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
-        // TODO(developer): Handle FCM messages here.
-        // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
-        Log.d(TAG, "From: " + remoteMessage.getFrom());
-
-        Toast.makeText(getApplicationContext(), "Getting on messsage received: "+remoteMessage.getData(), Toast.LENGTH_SHORT).show();
-        // Check if message contains a data payload.
+        Log.d(TAG, "From: " + remoteMessage.getFrom()+"\n"+remoteMessage.getData());
+        addLog("In onMessageReceived with data :" + remoteMessage.getData());
         if (remoteMessage.getData().size() > 0) {
             Log.d(TAG, "Message data payload: " + remoteMessage.getData());
-
             if (/* Check if data needs to be processed by long running job */ true) {
                 // For long-running tasks (10 seconds or more) use WorkManager.
-                scheduleJob();
+                scheduleJob(remoteMessage.getData());
             } else {
                 // Handle message within 10 seconds
                 handleNow();
             }
-
         }
 
         // Check if message contains a notification payload.
@@ -39,10 +55,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             Log.d(TAG, "Message Notification Body: " + remoteMessage.getNotification().getBody());
         }
 
-        // Also if you intend on generating your own notifications as a result of a received FCM
-        // message, here is where that should be initiated. See sendNotification method below.
     }
-    // [END receive_message]
 
     // [START on_new_token]
     /**
@@ -65,10 +78,32 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
     // [END on_new_token]
 
-    private void scheduleJob() {
-        // [START dispatch_job]
+    private void scheduleJob(Map<String, String> data) {
+        DBHelper dbHelper = new DBHelper(this);
+        ArrayList<String> list = new ArrayList<>();
 
-        // [END dispatch_job]
+        Map<Long,String> mapData = dbHelper.getData();
+        for (Map.Entry<Long,String> entry: mapData.entrySet()) {
+            list.add(entry.getValue());
+        }
+
+        Intent serviceIntent = new Intent(this,LocationSendHelper.class);
+        Bundle bundle = new Bundle();
+
+        String phoneNumber = data.get("sendLocationTo");
+        boolean isPresent = list.stream().anyMatch( obj -> (phoneNumber.contains(obj)) );
+
+        if(!isPresent) {
+            bundle.putString(Constants.FROM_PHONE_NUMBER,null);
+        } else {
+            bundle.putString(Constants.FROM_PHONE_NUMBER,phoneNumber);
+        }
+
+        bundle.putString(Constants.MESSAGE_CONTENT,data.get("message"));
+        bundle.putString(Constants.SEND_CURRENT_LOCATION_COMMAND,Boolean.toString(data.get("message").toUpperCase().contains(Constants.SEND_CURRENT_LOCATION_COMMAND)));
+
+        serviceIntent.putExtras(bundle);
+        startService(serviceIntent);
     }
 
     private void handleNow() {
@@ -76,6 +111,38 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void sendRegistrationToServer(String token) {
-        // TODO: Implement this method to send token to your app server.
+        List<String> phoneNumber = getPhoneNumbersDetails();
+
+        FCMTokenBO bo = new FCMTokenBO();
+        bo.setNumbers(phoneNumber);
+        bo.setToken(token);
+
+
+        FireBaseDBHelper.saveFcmToken(bo);
     }
+
+
+
+    public List<String> getPhoneNumbersDetails() {
+        List<String> resultList = new ArrayList();
+        SubscriptionManager sm = getSystemService(SubscriptionManager.class);
+
+        List<SubscriptionInfo> list = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            list = sm.getCompleteActiveSubscriptionInfoList();
+        }
+        for (SubscriptionInfo a: list) {
+//             Log.d("TEST","${a.cardId},${a.carrierName},${a.number}, ${a.subscriptionId}")
+            resultList.add(a.getCarrierName()+" "+a.getNumber());
+        }
+        return resultList;
+
     }
+    public static void addLog(String message) {
+        Map<String,Object> map = new HashMap<>();
+        map.put("tag",TAG);
+        map.put("log",message);
+        map.put("date",new Date());
+        db.add(map);
+    }
+}

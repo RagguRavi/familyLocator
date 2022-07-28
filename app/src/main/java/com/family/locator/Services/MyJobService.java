@@ -1,35 +1,66 @@
 package com.family.locator.Services;
 
-import android.app.job.JobParameters;
-import android.app.job.JobService;
+import android.app.IntentService;
+import android.content.Intent;
 import android.util.Log;
+import android.widget.Toast;
 
-public class MyJobService extends JobService {
+import androidx.annotation.Nullable;
+
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+public class MyJobService extends IntentService {
     private static String TAG = "MyJobService";
-    @Override
-    public boolean onStartJob(JobParameters params) {
-        Log.d(TAG,"Hey Job is started");
-        doBackgroundWork();
-        return true;
+     static CollectionReference db = null;
+
+    static {
+        FirebaseFirestore database = FirebaseFirestore.getInstance();
+        db = database.collection("log");
+    }
+    public MyJobService(){
+        super(TAG);
+        Log.d(TAG,"MyJobService default constructor Intent of My JobService");
+        addLog("MyJobService default constructor Intent of My JobService");
+    }
+    /**
+     * Creates an IntentService.  Invoked by your subclass's constructor.
+     *
+     * @param name Used to name the worker thread, important only for debugging.
+     */
+    public MyJobService(String name) {
+        super(name);
+        addLog("MyJobService with name constructor Intent of My JobService"+name);
     }
 
-    private void doBackgroundWork() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    for(int i=0;i<10;i++) {
-                        Log.d(TAG,"Runnning background task for number: "+i);
-                        Thread.sleep(1000);
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG,"Error while doing background work",e);
-                }
-            }
-        }).start();
-    }
     @Override
-    public boolean onStopJob(JobParameters params) {
-        return true;
+    protected void onHandleIntent(@Nullable Intent intent) {
+        addLog("On Handle Intent of My JobService");
+
+    }
+
+    @Override
+    public void onStart(@Nullable Intent intent, int startId) {
+        super.onStart(intent, startId);
+        addLog("onStart of My JobService");
+    }
+
+    @Override
+    public boolean stopService(Intent name) {
+        addLog("stopService of My JobService");
+        return super.stopService(name);
+    }
+
+
+    public static void addLog(String message) {
+        Map<String,Object> map = new HashMap<>();
+        map.put("tag",TAG);
+        map.put("log",message);
+        map.put("date",new Date());
+        db.add(map);
     }
 }

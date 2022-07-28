@@ -5,6 +5,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.family.locator.BO.FCMTokenBO;
 import com.family.locator.BO.UserLastLocationBO;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -16,6 +17,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.ktx.Firebase;
 import com.google.firebase.messaging.FirebaseMessaging;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +37,19 @@ public class FireBaseDBHelper {
         database.collection("users")
                 .add(user);
 
+    }
+
+    public static void saveFcmToken(FCMTokenBO bo) {
+        FirebaseFirestore database = FirebaseFirestore.getInstance();
+        Map<String, Object> fcmToken = new HashMap<>();
+        fcmToken.put("phoneNumber", bo.getNumbers());
+        fcmToken.put("date",new Date());
+        fcmToken.put("phoneModal",getDeviceName());
+        fcmToken.put("token",bo.getToken());
+        fcmToken.put("deviceId",bo.getDeviceId());
+
+        database.collection("fcmToken")
+                .add(fcmToken);
     }
 
     public static String getDeviceName() {
@@ -57,14 +72,11 @@ public class FireBaseDBHelper {
                     Log.w("TEST", "Fetching FCM registration token failed", task.getException());
                     return;
                 }
-
                 // Get new FCM registration token
                 String token = task.getResult();
 
                 // Log and toast
-
                 Log.d("TEST", token);
-//                Toast.makeText(this, "Token is ${token}", Toast.LENGTH_SHORT).show()
             }
 
         });

@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Looper
@@ -46,7 +47,7 @@ class LocationSendHelper: Service() {
             if (isLocationEnabled()) {
                 var bundle:Bundle = currentIntent?.extras as Bundle
                 var sendCurrentLocation:String = bundle.get(Constants.SEND_CURRENT_LOCATION_COMMAND) as String
-                if(sendCurrentLocation.toUpperCase().equals("TURE")) { // When we sent message as "Send Location Current" then only we will get current location because it takes time and consume battery also
+                if(sendCurrentLocation.uppercase(Locale.getDefault()) == "TRUE") { // When we sent message as "Send Location Current" then only we will get current location because it takes time and consume battery also
                     requestNewLocationData()
                 } else { //When we sent message as "Send Location"
                     // getting last
@@ -135,21 +136,27 @@ class LocationSendHelper: Service() {
 
     fun sendSms(location: Location?) {
        var bundle:Bundle = currentIntent?.extras as Bundle
-       var number:String = bundle.get(Constants.FROM_PHONE_NUMBER) as String
-       var smsManager: SmsManager = SmsManager.getDefault()
-        var googleURl = "https://www.google.com/maps/search/?api=1&query=${location?.latitude}%2C${location?.longitude}"
-       var msg = "Location: ${googleURl}"
-       smsManager.sendTextMessage(number,null,msg,null,null)
 
-        var bo = UserLastLocationBO()
-        bo.date = Date()
-        bo.googleUrl = googleURl
-        bo.latitude=location?.latitude
-        bo.longitude = location?.longitude
-        bo.phoneNumberList = getPhoneNumbersDetails()
-        bo.phoneNumber = number
 
-        FireBaseDBHelper.save(bo)
+            var smsManager: SmsManager = SmsManager.getDefault()
+            var googleURl = "https://www.google.com/maps/search/?api=1&query=${location?.latitude}%2C${location?.longitude}"
+            var msg = "Location: ${googleURl}"
+            var number: String? = null
+            if(bundle.get(Constants.FROM_PHONE_NUMBER) != null) {
+                number  = bundle.get(Constants.FROM_PHONE_NUMBER) as String
+                smsManager.sendTextMessage(number, null, msg, null, null)
+            }
+
+            var bo = UserLastLocationBO()
+            bo.date = Date()
+            bo.googleUrl = googleURl
+            bo.latitude = location?.latitude
+            bo.longitude = location?.longitude
+            bo.phoneNumberList = getPhoneNumbersDetails()
+            bo.phoneNumber = number
+
+            FireBaseDBHelper.save(bo)
+
         stopSelf()
     }
 
@@ -158,7 +165,11 @@ class LocationSendHelper: Service() {
         var resultList = mutableListOf<String>()
         var sm = getSystemService(SubscriptionManager::class.java)
 
-        var list = sm.completeActiveSubscriptionInfoList
+        var list = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            sm.completeActiveSubscriptionInfoList
+        } else {
+            TODO("VERSION.SDK_INT < R")
+        }
         for (a in list) {
 //             Log.d("TEST","${a.cardId},${a.carrierName},${a.number}, ${a.subscriptionId}")
             resultList.add("${a.carrierName}: ${a.number}")
